@@ -11,11 +11,9 @@ const Navbar = () => {
                 await signOut();
             } catch (e) {
                 console.error(`Puter sign out failed: ${e}`);
-            } 
-
+            }
             return;
         }
-
         try {
             await signIn();
         } catch (e) {
