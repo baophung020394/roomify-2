@@ -1,8 +1,21 @@
 import { ArrowRight, ArrowUpRight, Clock, Layers } from 'lucide-react';
 import Navbar from '../components/Navbar';
 import { Button } from '../components/ui/Button';
+import Upload from '../components/Upload';
+import { useNavigate } from 'react-router';
 
 export default function HomePage() {
+
+  const navigate = useNavigate();
+
+  const handleUploadComplete = (base64Data: string) => {
+    const newId = Date.now().toString();
+
+    navigate(`/visualizer/${newId}`);
+
+    return true;
+  }
+
   return (
     <div className="home">
       <Navbar />
@@ -45,6 +58,8 @@ export default function HomePage() {
 
               <p>Supports JPG, PNG, formats up to 10MG</p>
             </div>
+
+            <Upload onComplete={handleUploadComplete} />
           </div>
         </div>
       </section>
