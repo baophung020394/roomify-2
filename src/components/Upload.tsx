@@ -2,7 +2,13 @@ import { CheckCircle2, ImageIcon, UploadIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, DragEvent } from 'react';
 import { useOutletContext } from 'react-router';
-import { PROGRESS_INTERVAL_MS, PROGRESS_STEP, REDIRECT_DELAY_MS } from '../lib/constants';
+import {
+    MAX_UPLOAD_FILE_SIZE_BYTES,
+    MAX_UPLOAD_FILE_SIZE_MB,
+    PROGRESS_INTERVAL_MS,
+    PROGRESS_STEP,
+    REDIRECT_DELAY_MS
+} from '../lib/constants';
 
 type UploadProps = {
     onComplete?: (base64Data: string) => void;
@@ -12,7 +18,11 @@ const Upload = ({ onComplete = () => undefined }: UploadProps) => {
     const [file, setFile] = useState<File | null>(null);
     const [isDragging, setIsDragging] = useState(false);
     const [progress, setProgress] = useState(0);
+    const [error, setError] = useState<string | null>(null);
     const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const redirectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const base64DataRef = useRef('');
+    const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png'];
 
     const { isSignedIn } = useOutletContext<AuthContext>();
 
@@ -23,12 +33,52 @@ const Upload = ({ onComplete = () => undefined }: UploadProps) => {
         }
     };
 
-    useEffect(() => () => clearProgressInterval(), []);
+    const clearRedirectTimeout = () => {
+        if (redirectTimeoutRef.current) {
+            clearTimeout(redirectTimeoutRef.current);
+            redirectTimeoutRef.current = null;
+        }
+    };
+
+    useEffect(() => () => {
+        clearProgressInterval();
+        clearRedirectTimeout();
+    }, []);
+
+    useEffect(() => {
+        if (progress !== 100 || !base64DataRef.current) return;
+
+        clearProgressInterval();
+        clearRedirectTimeout();
+
+        redirectTimeoutRef.current = setTimeout(() => {
+            onComplete(base64DataRef.current);
+        }, REDIRECT_DELAY_MS);
+    }, [onComplete, progress]);
 
     const processFile = (files: FileList | null) => {
         if (!isSignedIn || !files?.length) return;
 
         const selectedFile = files[0];
+        clearProgressInterval();
+        clearRedirectTimeout();
+        base64DataRef.current = '';
+        setError(null);
+
+        const isAllowedMimeType = ALLOWED_MIME_TYPES.includes(selectedFile.type);
+        if (!isAllowedMimeType) {
+            setFile(null);
+            setProgress(0);
+            setError('Please upload a JPG or PNG image.');
+            return;
+        }
+        if (selectedFile.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+            setFile(null);
+            setProgress(0);
+            setError(`File is too large. Maximum size is ${MAX_UPLOAD_FILE_SIZE_MB}MB.`);
+            return;
+        }
+
         const reader = new FileReader();
 
         setFile(selectedFile);
@@ -37,20 +87,11 @@ const Upload = ({ onComplete = () => undefined }: UploadProps) => {
         reader.onload = () => {
             const base64Data = String(reader.result ?? '');
             if (!base64Data) return;
+            base64DataRef.current = base64Data;
 
             clearProgressInterval();
-
             progressIntervalRef.current = setInterval(() => {
-                setProgress((prevProgress) => {
-                    const nextProgress = Math.min(prevProgress + PROGRESS_STEP, 100);
-
-                    if (nextProgress === 100) {
-                        clearProgressInterval();
-                        setTimeout(() => onComplete(base64Data), REDIRECT_DELAY_MS);
-                    }
-
-                    return nextProgress;
-                });
+                setProgress((prevProgress) => Math.min(prevProgress + PROGRESS_STEP, 100));
             }, PROGRESS_INTERVAL_MS);
         };
 
@@ -107,7 +148,8 @@ const Upload = ({ onComplete = () => undefined }: UploadProps) => {
                             <p>
                                 {isSignedIn ? "Click to upload or just drag and drop" : ("Sign in or sign up with Puter to upload")}
                             </p>
-                            <p className="help">Maximum file size 50MB</p>
+                            <p className="help">Maximum file size {MAX_UPLOAD_FILE_SIZE_MB}MB</p>
+                            {error ? <p className="help">{error}</p> : null}
                         </div>
                     </div>
                 ) : (

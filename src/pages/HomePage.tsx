@@ -3,6 +3,7 @@ import Navbar from '../components/Navbar';
 import { Button } from '../components/ui/Button';
 import Upload from '../components/Upload';
 import { useNavigate } from 'react-router';
+import { MAX_UPLOAD_FILE_SIZE_MB } from '../lib/constants';
 
 export default function HomePage() {
 
@@ -11,9 +12,7 @@ export default function HomePage() {
   const handleUploadComplete = (base64Data: string) => {
     const newId = Date.now().toString();
 
-    navigate(`/visualizer/${newId}`);
-
-    return true;
+    navigate(`/visualizer/${newId}`, { state: { base64: base64Data } });
   }
 
   return (
@@ -29,11 +28,11 @@ export default function HomePage() {
           <p>Introducing Roomify 2.0</p>
         </div>
 
-        <h1>Build beautiful spaces at the speed of throught with Roomify</h1>
+        <h1>Build beautiful spaces at the speed of thought with Roomify</h1>
 
         <p className="subtitle">
           Roomify is an AI-first design environment
-          that helps you visualize, rendr, and ship,
+          that helps you visualize, render, and ship,
           architectural projects faster than ever.
         </p>
 
@@ -56,7 +55,7 @@ export default function HomePage() {
 
               <h3>Upload your floor plan</h3>
 
-              <p>Supports JPG, PNG, formats up to 10MG</p>
+              <p>Supports JPG, PNG, formats up to {MAX_UPLOAD_FILE_SIZE_MB}MB</p>
             </div>
 
             <Upload onComplete={handleUploadComplete} />
