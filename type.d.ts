@@ -12,3 +12,7 @@ type AuthContext = {
     signIn: () => Promise<void>;
     signOut: () => Promise<void>;
 }
+
+interface StoreHostedImageParams {
+    
+}
